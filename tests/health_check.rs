@@ -1,16 +1,26 @@
-use zero2prod::main;
+use std::net::TcpListener;
 
-#[test]
-mod tests {
+#[tokio::test]
+async fn health_check() {
+    let address = spawn_app();
 
-    use crate::health_check;
+    let client = reqwest::Client::new();
 
-    #[tokio::test]
-    async fn health_check_succeeds() {
-        let response = health_check().await;
-        // This requires changing the return type of `health_check`
-        // from `impl Responder` to `HttpResponse` to compile
-        // You also need to import it with `use actix_web::HttpResponse`!
-        assert!(response.status().is_success())
-    }
+    let response = client
+        .get(format!("{address}/health_check"))
+        .send()
+        .await
+        .expect("Failed to execute a reqwest");
+
+    assert!(response.status().is_success());
+    assert_eq!(response.content_length(), Some(12))
+}
+fn spawn_app() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to find a port");
+
+    let port = listener.local_addr().unwrap().port();
+    let server = zero2prod::run(listener).expect("Failed to bind address");
+    tokio::spawn(server);
+
+    format!("http://127.0.0.1:{port}")
 }
