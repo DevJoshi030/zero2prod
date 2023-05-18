@@ -13,7 +13,7 @@ async fn health_check() {
         .expect("Failed to execute a reqwest");
 
     assert!(response.status().is_success());
-    assert_eq!(response.content_length(), Some(12))
+    assert_eq!(response.content_length(), Some(14))
 }
 
 fn spawn_app() -> String {
@@ -26,6 +26,12 @@ fn spawn_app() -> String {
     format!("http://127.0.0.1:{port}")
 }
 
+#[derive(From)]
+struct Test<'a> {
+    email: &'a str,
+    name: &'a str,
+}
+
 #[tokio::test]
 async fn subscribe_returns_200_for_valid_data() {
     let address = spawn_app();
@@ -33,10 +39,15 @@ async fn subscribe_returns_200_for_valid_data() {
 
     println!("{address}");
 
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    let t = Test {
+        email: "ursula_le_guin@gmail.com",
+        name: "le guin",
+    };
+
+    let body = t;
     let response = client
         .post(format!("{address}/subscriptions"))
-        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Content-Type", "application/json")
         .body(body)
         .send()
         .await
